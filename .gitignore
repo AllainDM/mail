@@ -1,0 +1,11 @@
+# Разработка
+.idea/
+__pycache__/
+venv
+
+# Папки с файлами
+files
+result
+
+# Конфиг
+config.py
