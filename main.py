@@ -14,7 +14,10 @@ import xlwt
 
 import config
 import for_api
+import filter
 
+
+# Настройка imaplib
 mail_pass = config.password
 username = config.address
 imap_server = "imap.mail.ru"
@@ -28,7 +31,11 @@ imap.select('user')
 typ, data = imap.uid('search', "UNSEEN", "ALL")
 
 def start():
-    list_all = []
+    list_all_north = []
+    list_all_south = []
+    list_all_west = []
+    list_all_east = []
+    list_all_hz = []
     for num in data[0].split():
         res, msg = imap.uid('fetch', num, '(RFC822)')
         # print(num)
@@ -64,48 +71,76 @@ def start():
                         # t_o = ""
                         # read_one(row, t_o)
                         # print(row)
-                        # Бренд, получим с помощью API
+                        # 1 Бренд, получим с помощью API
                         try: list_one.append(for_api.search_brand(int(sheet.cell_value(row, 1))))
                         except ValueError: list_one.append(" ")
 
-                        # Дата
+                        # 2 Дата
                         list_one.append(sheet.cell_value(row, 0))
 
-                        # Лицевой счет
+                        # 3 Лицевой счет
                         try: list_one.append(int(sheet.cell_value(row, 1)))
                         except ValueError: list_one.append(sheet.cell_value(row, 1))
 
-                        # Номер заявки
+                        # 4 Номер заявки
                         try: list_one.append(int(sheet.cell_value(row, 2)))
                         except ValueError: list_one.append(sheet.cell_value(row, 2))
 
-                        # Улица
-                        list_one.append(sheet.cell_value(row, 3))
+                        # 5 Улица
+                        street = filter.filter_street(sheet.cell_value(row, 3))
+                        list_one.append(street)
 
-                        # Дом
+                        # 6 Дом
                         try: list_one.append(int(sheet.cell_value(row, 4)))
                         except ValueError: list_one.append(sheet.cell_value(row, 4))
 
-                        # Квартира
+                        # 7 Квартира
                         try: list_one.append(int(sheet.cell_value(row, 5)))
                         except ValueError: list_one.append(sheet.cell_value(row, 5))
 
-                        # Мастер
-                        list_one.append(sheet.cell_value(row, 6))
+                        # 8 Мастер
+                        master = sheet.cell_value(row, 6)
+                        if master in filter.filter_master_no_to:
+                            continue
+                        else:
+                            list_one.append(sheet.cell_value(row, 6))
 
-                        # Тип договора
-                        list_one.append(sheet.cell_value(row, 7))
+                        # Проверим столбец оборудования до выставления типа договора
+                        router = filter.filter_router(sheet.cell_value(row, 8))
 
-                        # Оборудование
-                        list_one.append(sheet.cell_value(row, 8))
+                        # 9 Тип договора
+                        if router == "Услуга":
+                            list_one.append("Услуга")
+                        else:
+                            list_one.append(sheet.cell_value(row, 7))
+
+                        # 10 Оборудование
+                        if router == "Услуга":
+                            list_one.append("")
+                        else:
+                            list_one.append(router)
 
                         # Итог
-                        list_all.append(list_one)
-    print(list_all)
-    save_to_exel(list_all)
+                        if master in filter.filter_master_north:
+                            list_all_north.append(list_one)
+                        elif master in filter.filter_master_south:
+                            list_all_south.append(list_one)
+                        elif master in filter.filter_master_west:
+                            list_all_west.append(list_one)
+                        elif master in filter.filter_master_east:
+                            list_all_east.append(list_one)
+                        else:
+                            list_all_hz.append(list_one)
+
+    # print(list_all)
+    save_to_exel(list_all_north, "north")
+    save_to_exel(list_all_south, "south")
+    save_to_exel(list_all_west, "west")
+    save_to_exel(list_all_east, "east")
+    save_to_exel(list_all_hz, "hz")
 
 
-def save_to_exel(list_to_exel):
+def save_to_exel(list_to_exel, to):
     wb = xlwt.Workbook()
     ws = wb.add_sheet("Электронные акты")
 
@@ -125,10 +160,10 @@ def save_to_exel(list_to_exel):
 
 
     date_now = datetime.now()
-    date_now_year = date_now.strftime("%d.%m.%Y")
+    date_now_year = date_now.strftime("%d.%m.%Y %H:%M")
 
 
-    wb.save(f'result/{date_now_year}.xlsx')
+    wb.save(f'result/{to}_{date_now_year}.xlsx')
 
 if __name__ == '__main__':
     start()

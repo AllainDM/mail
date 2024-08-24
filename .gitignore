@@ -9,3 +9,5 @@ result
 
 # Конфиг
 config.py
+filter.py
+for_api.py
